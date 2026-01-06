@@ -45,11 +45,11 @@ class ProductDetailScreen extends StatelessWidget {
                       height: 220,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => const SizedBox(
+                      placeholder: (_, _) => const SizedBox(
                         height: 220,
                         child: Center(child: CircularProgressIndicator()),
                       ),
-                      errorWidget: (_, __, ___) => const SizedBox(
+                      errorWidget: (_, _, _) => const SizedBox(
                         height: 220,
                         child: Center(child: Icon(Icons.broken_image)),
                       ),
