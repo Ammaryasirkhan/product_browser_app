@@ -15,7 +15,7 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  final _searchCtrl = TextEditingController();
+  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -34,79 +34,130 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final bloc = context.read<ProductListBloc>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Search by title...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    bloc.add(ClearSearch());
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      appBar: AppBar(
+        title: const Text('Products'),
+        backgroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) => bloc.add(SearchProducts(v)),
+                decoration: InputDecoration(
+                  hintText: 'Search by title...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            bloc.add(ClearSearch());
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
-              onChanged: (v) => bloc.add(SearchProducts(v)),
             ),
-          ),
-          Expanded(
-            child: BlocBuilder<ProductListBloc, ProductListState>(
-              builder: (context, state) {
-                if (state is ProductListLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (state is ProductListError) {
-                  return AppErrorView(
-                    message: state.message,
-                    onRetry: () => bloc.add(RetryFetchProducts()),
-                  );
-                }
-
-                if (state is ProductListLoaded) {
-                  if (state.products.isEmpty) {
-                    return const Center(child: Text('No products found.'));
+            Expanded(
+              child: BlocBuilder<ProductListBloc, ProductListState>(
+                builder: (context, state) {
+                  if (state is ProductListLoading) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
-                  return RefreshIndicator(
-                    onRefresh: () async =>
-                        bloc.add(FetchProducts()), 
-                    child: ListView.separated(
-                      itemCount: state.products.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final p = state.products[i];
-                        return ProductTile(
-                          product: p,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProductDetailScreen(productId: p.id),
-                              ),
-                            );
+                  if (state is ProductListError) {
+                    return AppErrorView(
+                      message: state.message,
+                      onRetry: () => bloc.add(RetryFetchProducts()),
+                    );
+                  }
+
+                  if (state is ProductListLoaded) {
+                    if (state.products.isEmpty) {
+                      return const Center(child: Text('No products found.'));
+                    }
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final bool isWide = constraints.maxWidth >= 600;
+
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            bloc.add(FetchProducts());
                           },
+                          child: isWide
+                              ? GridView.builder(
+                                  padding: const EdgeInsets.all(8),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount:
+                                            constraints.maxWidth >= 900 ? 3 : 2,
+                                        mainAxisSpacing: 8,
+                                        crossAxisSpacing: 8,
+                                        childAspectRatio: 3.5,
+                                      ),
+                                  itemCount: state.products.length,
+                                  itemBuilder: (context, i) {
+                                    final p = state.products[i];
+                                    return Material(
+                                      borderRadius: BorderRadius.circular(12),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ProductTile(
+                                        product: p,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  ProductDetailScreen(
+                                                    productId: p.id,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                )
+                              : ListView.separated(
+                                  itemCount: state.products.length,
+                                  separatorBuilder: (_, _) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (context, i) {
+                                    final p = state.products[i];
+                                    return ProductTile(
+                                      product: p,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ProductDetailScreen(
+                                              productId: p.id,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
                         );
                       },
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                return const SizedBox.shrink();
-              },
+                  return const SizedBox.shrink();
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

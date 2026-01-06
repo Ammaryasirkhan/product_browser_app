@@ -16,64 +16,100 @@ class ProductDetailScreen extends StatelessWidget {
       create: (_) => context.read<ProductDetailCubit>()..load(productId),
       child: Scaffold(
         appBar: AppBar(title: const Text('Product Detail')),
-        body: BlocBuilder<ProductDetailCubit, ProductDetailState>(
-          builder: (context, state) {
-            if (state is ProductDetailLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body: SafeArea(
+          child: BlocBuilder<ProductDetailCubit, ProductDetailState>(
+            builder: (context, state) {
+              if (state is ProductDetailLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            if (state is ProductDetailError) {
-              return AppErrorView(
-                message: state.message,
-                onRetry: () =>
-                    context.read<ProductDetailCubit>().load(productId),
-              );
-            }
+              if (state is ProductDetailError) {
+                return AppErrorView(
+                  message: state.message,
+                  onRetry: () =>
+                      context.read<ProductDetailCubit>().load(productId),
+                );
+              }
 
-            if (state is ProductDetailLoaded) {
-              final p = state.product;
+              if (state is ProductDetailLoaded) {
+                final p = state.product;
 
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: (p.images.isNotEmpty
-                          ? p.images.first
-                          : p.thumbnail),
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => const SizedBox(
-                        height: 220,
-                        child: Center(child: CircularProgressIndicator()),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final bool isWide = constraints.maxWidth >= 700;
+
+                    final image = ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: p.images.isNotEmpty
+                            ? p.images.first
+                            : p.thumbnail,
+                        height: isWide ? 320 : 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => SizedBox(
+                          height: isWide ? 320 : 220,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (_, _, _) => SizedBox(
+                          height: isWide ? 320 : 220,
+                          child: const Center(child: Icon(Icons.broken_image)),
+                        ),
                       ),
-                      errorWidget: (_, _, _) => const SizedBox(
-                        height: 220,
-                        child: Center(child: Icon(Icons.broken_image)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(p.title, style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  Text(
-                    p.price.asMoney(),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(p.description),
-                  const SizedBox(height: 12),
-                  Text('Category: ${p.category}'),
-                  const SizedBox(height: 8),
-                  if (p.rating != null) Text('Rating: ${p.rating}'),
-                ],
-              );
-            }
+                    );
 
-            return const SizedBox.shrink();
-          },
+                    final details = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          p.price.asMoney(),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(p.description),
+                        const SizedBox(height: 16),
+                        Text('Category: ${p.category}'),
+                        if (p.rating != null) ...[
+                          const SizedBox(height: 8),
+                          Text('Rating: ${p.rating}'),
+                        ],
+                      ],
+                    );
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 5, child: image),
+                                const SizedBox(width: 24),
+                                Expanded(flex: 6, child: details),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                image,
+                                const SizedBox(height: 16),
+                                details,
+                              ],
+                            ),
+                    );
+                  },
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );
