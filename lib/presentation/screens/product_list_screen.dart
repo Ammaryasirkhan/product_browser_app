@@ -1,0 +1,113 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/product_list/product_list_bloc.dart';
+import '../blocs/product_list/product_list_event.dart';
+import '../blocs/product_list/product_list_state.dart';
+import '../widgets/app_error_view.dart';
+import '../widgets/product_tile.dart';
+import 'product_detail_screen.dart';
+
+class ProductListScreen extends StatefulWidget {
+  const ProductListScreen({super.key});
+
+  @override
+  State<ProductListScreen> createState() => _ProductListScreenState();
+}
+
+class _ProductListScreenState extends State<ProductListScreen> {
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ProductListBloc>().add(FetchProducts());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = context.read<ProductListBloc>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Products')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Search by title...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    bloc.add(ClearSearch());
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (v) => bloc.add(SearchProducts(v)),
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<ProductListBloc, ProductListState>(
+              builder: (context, state) {
+                if (state is ProductListLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state is ProductListError) {
+                  return AppErrorView(
+                    message: state.message,
+                    onRetry: () => bloc.add(RetryFetchProducts()),
+                  );
+                }
+
+                if (state is ProductListLoaded) {
+                  if (state.products.isEmpty) {
+                    return const Center(child: Text('No products found.'));
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async =>
+                        bloc.add(FetchProducts()), 
+                    child: ListView.separated(
+                      itemCount: state.products.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final p = state.products[i];
+                        return ProductTile(
+                          product: p,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ProductDetailScreen(productId: p.id),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  );
+                }
+
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
